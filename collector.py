@@ -109,21 +109,20 @@ def fetch_article(article_id: int) -> dict[str, Any]:
 
 
 def current_price(payload: dict[str, Any]) -> int | None:
-    """Пытаемся сначала взять аукционную цену, затем обычную цену карточки."""
-    value = recursive_find(
-        payload,
-        (
-            "auction_price",
-            "auctionPrice",
-            "current_bid",
-            "currentBid",
-            "current_price",
-            "currentPrice",
-            "winning_bid",
-            "winningBid",
-        ),
+    """На карточке аукционного машиноместа поле price является текущей ценой."""
+    return as_int(payload.get("price")) or as_int(
+        recursive_find(
+            payload,
+            (
+                "auction_price",
+                "auctionPrice",
+                "current_bid",
+                "currentBid",
+                "current_price",
+                "currentPrice",
+            ),
+        )
     )
-    return as_int(value) or as_int(payload.get("price"))
 
 
 def normalize_article(
@@ -134,7 +133,7 @@ def normalize_article(
     api_number = as_int(
         payload.get("number_stage")
         or payload.get("numberStage")
-        or payload.get("parking_number")
+        or payload.get("apartmentNumber")
         or payload.get("number")
     )
     api_level = as_int(payload.get("floor") or payload.get("level"))
@@ -158,7 +157,8 @@ def normalize_article(
         "collected_at": now_iso(),
         "current_price_rub": current_price(payload),
         "status": str(payload.get("status")) if payload.get("status") is not None else None,
-        "auction_start": recursive_find(
+        "auction_start": payload.get("startAuctionDate")
+        or recursive_find(
             payload,
             (
                 "auction_start",
@@ -166,10 +166,10 @@ def normalize_article(
                 "auctionStart",
                 "auctionStartAt",
                 "auction_date_start",
-                "auctionDateStart",
             ),
         ),
-        "auction_end": recursive_find(
+        "auction_end": payload.get("endAuctionDate")
+        or recursive_find(
             payload,
             (
                 "auction_end",
@@ -177,12 +177,13 @@ def normalize_article(
                 "auctionEnd",
                 "auctionEndAt",
                 "auction_date_end",
-                "auctionDateEnd",
             ),
         ),
-        "bid_count": as_int(
+        "bid_count": as_int(payload.get("auctionBidsCount"))
+        or as_int(
             recursive_find(payload, ("bid_count", "bids_count", "bidCount", "bidsCount"))
-        ),
+        )
+        or 0,
         "raw_json": payload,
     }
     for key in ("auction_start", "auction_end"):
