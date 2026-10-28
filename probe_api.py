@@ -16,10 +16,26 @@ def short_shape(value, depth=2):
     if depth < 0:
         return type(value).__name__
     if isinstance(value, dict):
-        return {k: short_shape(v, depth - 1) for k, v in list(value.items())[:25]}
+        return {k: short_shape(v, depth - 1) for k, v in list(value.items())[:40]}
     if isinstance(value, list):
         return {"type": "list", "len": len(value), "first": short_shape(value[0], depth - 1) if value else None}
     return type(value).__name__
+
+
+def interesting_paths(value, prefix=""):
+    found = []
+    if isinstance(value, dict):
+        for key, item in value.items():
+            path = f"{prefix}.{key}" if prefix else key
+            lowered = key.lower()
+            if any(word in lowered for word in ("auction", "bid", "price", "number", "status", "floor", "bulk", "section", "date", "start", "end")):
+                if not isinstance(item, (dict, list)):
+                    found.append((path, item))
+            found.extend(interesting_paths(item, path))
+    elif isinstance(value, list):
+        for index, item in enumerate(value[:3]):
+            found.extend(interesting_paths(item, f"{prefix}[{index}]"))
+    return found
 
 
 def probe(name: str, url: str):
@@ -34,9 +50,16 @@ def probe(name: str, url: str):
             payload = response.json()
             print("shape:", json.dumps(short_shape(payload, 2), ensure_ascii=False))
             if isinstance(payload, dict):
-                print("block_id:", payload.get("block_id") or payload.get("blockId"))
-                print("id:", payload.get("id"))
-                print("type:", payload.get("type"))
+                print("top-level keys:", sorted(payload.keys()))
+                for key in (
+                    "id", "type_id", "status", "block_id", "bulk_id", "section_id", "floor",
+                    "number", "number_stage", "name", "price", "area", "area_project", "url"
+                ):
+                    if key in payload:
+                        print(f"{key}:", payload.get(key))
+                print("interesting values:")
+                for path, value in interesting_paths(payload)[:120]:
+                    print(f"  {path} = {value}")
         else:
             text = response.text
             print("contains article:", str(ARTICLE) in text)
@@ -51,6 +74,3 @@ if __name__ == "__main__":
     base = "https://api.pik.ru"
     probe("v1 flat query", f"{base}/v1/flat?id={ARTICLE}&similar=1")
     probe("v2 flat query", f"{base}/v2/flat?id={ARTICLE}")
-    probe("v1 parking query", f"{base}/v1/parking?id={ARTICLE}")
-    probe("v2 parking query", f"{base}/v2/parking?id={ARTICLE}")
-    probe("карточка сайта", f"https://www.pik.ru/parking/{ARTICLE}")
