@@ -56,6 +56,21 @@ def recursive_find(obj: Any, keys: tuple[str, ...]) -> Any:
     return None
 
 
+def payload_shape(obj: Any, depth: int = 2) -> Any:
+    """Короткое описание структуры ответа для диагностики в CI."""
+    if depth < 0:
+        return type(obj).__name__
+    if isinstance(obj, dict):
+        return {key: payload_shape(value, depth - 1) for key, value in list(obj.items())[:20]}
+    if isinstance(obj, list):
+        return {
+            "тип": "list",
+            "длина": len(obj),
+            "первый": payload_shape(obj[0], depth - 1) if obj else None,
+        }
+    return type(obj).__name__
+
+
 def as_int(value: Any) -> int | None:
     if value in (None, ""):
         return None
@@ -102,36 +117,53 @@ def extract_filter_items(payload: Any) -> list[dict[str, Any]]:
         if isinstance(value, list):
             return [x for x in value if isinstance(x, dict)]
 
-    data = payload.get("data")
-    if isinstance(data, list):
-        return [x for x in data if isinstance(x, dict)]
-    if isinstance(data, dict):
-        for key in ("results", "items", "flats", "properties", "objects"):
-            value = data.get(key)
-            if isinstance(value, list):
-                return [x for x in value if isinstance(x, dict)]
+    nested = recursive_find(payload, ("results", "items", "flats", "properties", "objects"))
+    if isinstance(nested, list):
+        return [x for x in nested if isinstance(x, dict)]
     return []
 
 
-def flatten_chessplan(payload: dict[str, Any]) -> list[dict[str, Any]]:
+def flatten_chessplan(payload: Any) -> list[dict[str, Any]]:
     """Разворачивает bulk → section → floor → flats в плоский список машиномест."""
     result: list[dict[str, Any]] = []
-    for bulk in payload.get("bulks") or []:
+    bulks = payload.get("bulks") if isinstance(payload, dict) else None
+    if not isinstance(bulks, list):
+        bulks = recursive_find(payload, ("bulks",))
+    if not isinstance(bulks, list):
+        return result
+
+    for bulk in bulks:
         if not isinstance(bulk, dict):
             continue
-        for section in bulk.get("sections") or []:
+        sections = bulk.get("sections") or recursive_find(bulk, ("sections",)) or []
+        if not isinstance(sections, list):
+            continue
+        for section in sections:
             if not isinstance(section, dict):
                 continue
-            floors = section.get("floors") or {}
-            if isinstance(floors, list):
-                floors = {str(index + 1): value for index, value in enumerate(floors)}
-            if not isinstance(floors, dict):
-                continue
+            floors = section.get("floors") or recursive_find(section, ("floors",)) or {}
 
-            for floor_number, floor_data in floors.items():
+            floor_pairs: list[tuple[Any, Any]] = []
+            if isinstance(floors, dict):
+                floor_pairs = list(floors.items())
+            elif isinstance(floors, list):
+                for index, floor_data in enumerate(floors):
+                    if isinstance(floor_data, dict):
+                        floor_number = (
+                            floor_data.get("number")
+                            or floor_data.get("floor")
+                            or floor_data.get("level")
+                            or index + 1
+                        )
+                        floor_pairs.append((floor_number, floor_data))
+
+            for floor_number, floor_data in floor_pairs:
                 if not isinstance(floor_data, dict):
                     continue
-                for item in floor_data.get("flats") or []:
+                flats = floor_data.get("flats") or recursive_find(floor_data, ("flats",)) or []
+                if not isinstance(flats, list):
+                    continue
+                for item in flats:
                     if not isinstance(item, dict):
                         continue
                     row = dict(item)
@@ -210,6 +242,8 @@ def resolve_block_id() -> int | None:
     save_raw("filter-projects", payload)
     blocks = payload.get("block") if isinstance(payload, dict) else None
     if not isinstance(blocks, list):
+        blocks = recursive_find(payload, ("block",))
+    if not isinstance(blocks, list):
         return None
 
     wanted = PROJECT_NAME.casefold().replace("ё", "е")
@@ -228,7 +262,6 @@ def resolve_block_id() -> int | None:
         return candidates[0][0]
 
     if candidates:
-        # При нескольких совпадениях берём точное по имени, иначе первое и явно пишем это в лог.
         for block_id, name in candidates:
             if name.casefold().replace("ё", "е").startswith(wanted):
                 print(f"Найден ЖК: {name} (block_id={block_id})")
@@ -238,13 +271,11 @@ def resolve_block_id() -> int | None:
     return None
 
 
-def fetch_parking(block_id: int) -> tuple[list[dict[str, Any]], Any | None]:
+def fetch_parking(block_id: int) -> tuple[list[dict[str, Any]], Any | None, Any]:
     chessplan = get_json("/v1/bulk/chessplan", {"new": 1, "block_id": block_id, "types": 5})
     save_raw("parking-chessplan", chessplan)
-    items = flatten_chessplan(chessplan if isinstance(chessplan, dict) else {})
+    items = flatten_chessplan(chessplan)
 
-    # Новый filter API полезен тем, что, по свежему публичному парсеру,
-    # в нём есть данные об аукционе. Пока сохраняем ответ целиком для изучения схемы.
     auction_payload = None
     try:
         auction_payload = get_json("/v2/filter", {"type": 5, "block": block_id})
@@ -252,7 +283,7 @@ def fetch_parking(block_id: int) -> tuple[list[dict[str, Any]], Any | None]:
     except Exception as exc:
         print(f"Не удалось получить v2/filter для паркинга: {exc}")
 
-    return items, auction_payload
+    return items, auction_payload, chessplan
 
 
 def collect_once() -> dict[str, Any]:
@@ -264,11 +295,7 @@ def collect_once() -> dict[str, Any]:
     try:
         block_id = resolve_block_id()
     except Exception as exc:
-        return {
-            "ok": False,
-            "message": f"Не удалось получить список проектов ПИК: {exc}",
-            "count": 0,
-        }
+        return {"ok": False, "message": f"Не удалось получить список проектов ПИК: {exc}", "count": 0}
 
     if not block_id:
         return {
@@ -278,7 +305,7 @@ def collect_once() -> dict[str, Any]:
         }
 
     try:
-        items, auction_payload = fetch_parking(block_id)
+        items, auction_payload, chessplan = fetch_parking(block_id)
     except Exception as exc:
         return {
             "ok": False,
@@ -295,7 +322,6 @@ def collect_once() -> dict[str, Any]:
         if not article_id:
             continue
 
-        # Не затираем вручную проверенные номер, старт и группу пустыми значениями API.
         if article_id in seed_by_id:
             merged = dict(seed_by_id[article_id])
             for key, value in lot.items():
@@ -303,7 +329,6 @@ def collect_once() -> dict[str, Any]:
                     merged[key] = value
             lot = merged
         else:
-            # Для найденных через API лотов первая увиденная цена пока служит стартовой.
             lot["start_price_rub"] = snapshot.get("current_price_rub")
 
         upsert_lot(conn, lot)
@@ -317,6 +342,8 @@ def collect_once() -> dict[str, Any]:
         "count": written,
         "block_id": block_id,
         "auction_filter_items": auction_items,
+        "chessplan_shape": payload_shape(chessplan, depth=3),
+        "filter_shape": payload_shape(auction_payload, depth=2) if auction_payload is not None else None,
     }
 
 
