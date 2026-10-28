@@ -1,11 +1,71 @@
 number,article_id,level,area_m2,start_price_rub,group,notes,url
-170,1070586,3,15.4,1555000,premium,"Широкое, прямо у лифта",https://www.pik.ru/parking/1070586
-233,1070647,4,15.4,1509000,premium,"Широкое, прямо у лифта",https://www.pik.ru/parking/1070647
-296,1070712,5,15.4,1478000,premium,"Широкое, прямо у лифта",https://www.pik.ru/parking/1070712
-168,1070584,3,13.3,1330000,watch,"Рядом с лифтом, стандартная ширина",https://www.pik.ru/parking/1070584
-294,1070710,5,13.3,1264000,watch,"Рядом с лифтом, дешёвый резерв",https://www.pik.ru/parking/1070710
-106,1070522,2,13.3,1410000,watch,"Низкий уровень, рядом с лифтом",https://www.pik.ru/parking/1070522
-268,1070685,5,21.9,1993000,watch,"Очень большое, но старт выше потолка",https://www.pik.ru/parking/1070685
-83,1070499,2,13.3,1397000,watch,"Обычное место, резерв",https://www.pik.ru/parking/1070499
-92,1070508,2,13.3,1370000,watch,"Обычное место, резерв",https://www.pik.ru/parking/1070508
-75,1070491,2,14.3,1502000,watch,"Увеличенная площадь, резерв",https://www.pik.ru/parking/1070491
+,1070696,5,13.3,1224000,auction,,https://www.pik.ru/parking/1070696
+,1070693,5,13.3,1237000,auction,,https://www.pik.ru/parking/1070693
+,1070637,4,13.3,1250000,auction,,https://www.pik.ru/parking/1070637
+,1070702,5,13.3,1250000,auction,,https://www.pik.ru/parking/1070702
+,1070706,5,13.3,1250000,auction,,https://www.pik.ru/parking/1070706
+,1070687,5,13.3,1250000,auction,,https://www.pik.ru/parking/1070687
+,1070691,5,13.3,1250000,auction,,https://www.pik.ru/parking/1070691
+,1070714,5,13.3,1264000,auction,,https://www.pik.ru/parking/1070714
+,1070631,4,13.3,1264000,auction,,https://www.pik.ru/parking/1070631
+,1070710,5,13.3,1264000,watch,"Рядом с лифтом, дешёвый резерв",https://www.pik.ru/parking/1070710
+,1070645,4,13.3,1277000,auction,,https://www.pik.ru/parking/1070645
+,1070625,4,13.3,1277000,auction,,https://www.pik.ru/parking/1070625
+,1070620,4,13.3,1277000,auction,,https://www.pik.ru/parking/1070620
+,1070638,4,13.3,1277000,auction,,https://www.pik.ru/parking/1070638
+,1070624,4,13.3,1290000,auction,,https://www.pik.ru/parking/1070624
+,1070651,4,13.3,1290000,auction,,https://www.pik.ru/parking/1070651
+,1070572,3,13.3,1290000,auction,,https://www.pik.ru/parking/1070572
+,1070648,4,13.3,1290000,auction,,https://www.pik.ru/parking/1070648
+,1070568,3,13.3,1303000,auction,,https://www.pik.ru/parking/1070568
+,1070667,5,14.3,1316000,auction,,https://www.pik.ru/parking/1070667
+,1070580,3,13.3,1317000,auction,,https://www.pik.ru/parking/1070580
+,1070560,3,13.3,1317000,auction,,https://www.pik.ru/parking/1070560
+,1070576,3,13.3,1317000,auction,,https://www.pik.ru/parking/1070576
+,1070666,5,14.3,1330000,auction,,https://www.pik.ru/parking/1070666
+,1070587,3,13.3,1330000,auction,,https://www.pik.ru/parking/1070587
+,1070584,3,13.3,1330000,watch,"Рядом с лифтом, стандартная ширина",https://www.pik.ru/parking/1070584
+,1070673,5,14.3,1344000,auction,,https://www.pik.ru/parking/1070673
+,1070606,4,14.3,1344000,auction,,https://www.pik.ru/parking/1070606
+,1070679,5,14.3,1344000,auction,,https://www.pik.ru/parking/1070679
+,1070681,5,14.3,1344000,auction,,https://www.pik.ru/parking/1070681
+,1070656,5,14.3,1344000,auction,,https://www.pik.ru/parking/1070656
+,1070659,5,14.3,1359000,auction,,https://www.pik.ru/parking/1070659
+,1070654,5,14.3,1359000,auction,,https://www.pik.ru/parking/1070654
+,1070602,4,14.3,1359000,auction,,https://www.pik.ru/parking/1070602
+,1070508,2,13.3,1370000,watch,"Обычное место, резерв",https://www.pik.ru/parking/1070508
+,1070614,4,14.3,1373000,auction,,https://www.pik.ru/parking/1070614
+,1070598,4,14.3,1373000,auction,,https://www.pik.ru/parking/1070598
+,1070610,4,14.3,1373000,auction,,https://www.pik.ru/parking/1070610
+,1070590,4,14.3,1387000,auction,,https://www.pik.ru/parking/1070590
+,1070594,4,14.3,1387000,auction,,https://www.pik.ru/parking/1070594
+,1070543,3,14.3,1387000,auction,,https://www.pik.ru/parking/1070543
+,1070515,2,13.3,1397000,auction,,https://www.pik.ru/parking/1070515
+,1070499,2,13.3,1397000,watch,"Обычное место, резерв",https://www.pik.ru/parking/1070499
+,1070517,2,13.3,1397000,auction,,https://www.pik.ru/parking/1070517
+,1070539,3,14.3,1401000,auction,,https://www.pik.ru/parking/1070539
+,1070524,2,13.3,1410000,auction,,https://www.pik.ru/parking/1070524
+,1070522,2,13.3,1410000,watch,"Низкий уровень, рядом с лифтом",https://www.pik.ru/parking/1070522
+,1070555,3,14.3,1416000,auction,,https://www.pik.ru/parking/1070555
+,1070547,3,14.3,1416000,auction,,https://www.pik.ru/parking/1070547
+,1070535,3,14.3,1416000,auction,,https://www.pik.ru/parking/1070535
+,1070551,3,14.3,1416000,auction,,https://www.pik.ru/parking/1070551
+,1070531,3,14.3,1430000,auction,,https://www.pik.ru/parking/1070531
+,1070527,3,14.3,1430000,auction,,https://www.pik.ru/parking/1070527
+,1070429,1,13.3,1463000,auction,,https://www.pik.ru/parking/1070429
+,1070712,5,15.4,1478000,premium,"Широкое, прямо у лифта",https://www.pik.ru/parking/1070712
+,1070482,2,14.3,1487000,auction,,https://www.pik.ru/parking/1070482
+,1070476,2,14.3,1487000,auction,,https://www.pik.ru/parking/1070476
+,1070440,1,13.3,1490000,auction,,https://www.pik.ru/parking/1070440
+,1070470,2,14.3,1502000,auction,,https://www.pik.ru/parking/1070470
+,1070491,2,14.3,1502000,watch,"Увеличенная площадь, резерв",https://www.pik.ru/parking/1070491
+,1070486,2,14.3,1502000,auction,,https://www.pik.ru/parking/1070486
+,1070647,4,15.4,1509000,premium,"Широкое, прямо у лифта",https://www.pik.ru/parking/1070647
+,1070464,2,14.3,1516000,auction,,https://www.pik.ru/parking/1070464
+,1070586,3,15.4,1555000,premium,"Широкое, прямо у лифта",https://www.pik.ru/parking/1070586
+,1070452,1,14.3,1573000,auction,,https://www.pik.ru/parking/1070452
+,1070448,1,14.3,1573000,auction,,https://www.pik.ru/parking/1070448
+,1070460,1,14.3,1602000,auction,,https://www.pik.ru/parking/1070460
+,1070444,1,14.3,1602000,auction,,https://www.pik.ru/parking/1070444
+,1070685,5,21.9,1993000,watch,"Очень большое, но старт выше потолка",https://www.pik.ru/parking/1070685
+,1070622,4,21.9,2037000,auction,,https://www.pik.ru/parking/1070622
