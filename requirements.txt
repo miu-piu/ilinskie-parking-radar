@@ -3,4 +3,6 @@ pandas>=2.2,<3
 streamlit>=1.39,<2
 streamlit-autorefresh>=1.0.1,<2
 PyYAML>=6.0,<7
+fastapi>=0.115,<1
+uvicorn[standard]>=0.32,<1
 pytest>=8.3,<9
