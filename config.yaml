@@ -1,0 +1,17 @@
+project:
+  name: "Ильинские луга"
+  parking_building: "31.1"
+  sample_lot_id: 1070586
+
+auction:
+  date: "2026-11-03"
+  hard_cap_rub: 1650000
+  bid_step_rub: 20000
+  participation_fee_rub: 20000
+  premium_preferred_gap_rub: 150000
+  cheap_preferred_gap_rub: 300000
+  poll_seconds: 15
+
+strategy:
+  premium_numbers: [170, 233, 296]
+  watch_numbers: [168, 294, 106, 268, 83, 92, 75]
