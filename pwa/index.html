@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0b0d10" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Паркинг 31.1" />
+  <title>Радар паркинга 31.1</title>
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <link rel="icon" href="/icon.svg" />
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <div>
+        <div class="eyebrow">Ильинские луга · паркинг 31.1</div>
+        <h1>Радар аукциона</h1>
+      </div>
+      <button id="refresh" class="icon-button" aria-label="Обновить">↻</button>
+    </header>
+
+    <section id="status" class="status">Загружаю данные ПИК…</section>
+
+    <section class="hero-grid">
+      <article class="hero-card accent">
+        <span>Рекомендация</span>
+        <strong id="decision">—</strong>
+        <small id="decisionReason">—</small>
+      </article>
+      <article class="hero-card">
+        <span>Жёсткий потолок</span>
+        <strong id="cap">1 650 000 ₽</strong>
+        <small>выше — не ставим</small>
+      </article>
+    </section>
+
+    <section class="comparison">
+      <article>
+        <span>Лучший премиум</span>
+        <strong id="bestPremium">—</strong>
+        <small id="bestPremiumPrice">—</small>
+      </article>
+      <article>
+        <span>Самое дешёвое</span>
+        <strong id="bestCheap">—</strong>
+        <small id="bestCheapPrice">—</small>
+      </article>
+      <article>
+        <span>Цена комфорта</span>
+        <strong id="comfortGap">—</strong>
+        <small>премиум минус дешёвое</small>
+      </article>
+    </section>
+
+    <nav class="filters" aria-label="Фильтры">
+      <button class="filter active" data-filter="all">Все</button>
+      <button class="filter" data-filter="premium">Премиум</button>
+      <button class="filter" data-filter="cheap">Дешёвые</button>
+      <button class="filter" data-filter="bids">Есть ставки</button>
+    </nav>
+
+    <section class="list-header">
+      <div>
+        <h2>Лоты</h2>
+        <span id="lotCount">—</span>
+      </div>
+      <select id="sort" aria-label="Сортировка">
+        <option value="entry">По цене входа</option>
+        <option value="bids">По числу ставок</option>
+        <option value="level">По уровню</option>
+      </select>
+    </section>
+
+    <section id="lots" class="lots"></section>
+
+    <footer>
+      <span id="updated">—</span>
+      <span>Ставки только вручную</span>
+    </footer>
+  </main>
+  <script src="/static/app.js" defer></script>
+</body>
+</html>
