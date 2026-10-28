@@ -19,4 +19,6 @@ jobs:
       - name: Проверить синтаксис
         run: python -m compileall app.py collector.py db.py scoring.py
       - name: Запустить тесты
+        env:
+          PYTHONPATH: .
         run: pytest -q
