@@ -17,10 +17,12 @@ jobs:
       - name: Установить зависимости
         run: pip install -r requirements.txt
       - name: Проверить синтаксис
-        run: python -m compileall app.py collector.py db.py scoring.py valuation.py
+        run: python -m compileall app.py server.py collector.py db.py scoring.py valuation.py
       - name: Запустить тесты
         env:
           PYTHONPATH: .
         run: pytest -q
+      - name: Проверить импорт PWA-сервера
+        run: python -c "from server import app; print(app.title)"
       - name: Проверить 70 карточек ПИК
         run: python collector.py
