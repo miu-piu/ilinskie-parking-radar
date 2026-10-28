@@ -1,0 +1,22 @@
+name: Проверка
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Получить код
+        uses: actions/checkout@v4
+      - name: Установить Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Установить зависимости
+        run: pip install -r requirements.txt
+      - name: Проверить синтаксис
+        run: python -m compileall app.py collector.py db.py scoring.py
+      - name: Запустить тесты
+        run: pytest -q
