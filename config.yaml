@@ -10,7 +10,7 @@ auction:
   participation_fee_rub: 20000
   premium_preferred_gap_rub: 150000
   cheap_preferred_gap_rub: 300000
-  poll_seconds: 15
+  poll_seconds: 30
 
 strategy:
   premium_numbers: [170, 233, 296]
