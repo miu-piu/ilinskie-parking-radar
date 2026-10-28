@@ -22,3 +22,5 @@ jobs:
         env:
           PYTHONPATH: .
         run: pytest -q
+      - name: Проверить доступ к API ПИК
+        run: python collector.py
