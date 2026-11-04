@@ -136,7 +136,7 @@ class MainActivity:Activity(){
   p.textSize=size;while(p.measureText(s)>width&&p.textSize>8f)p.textSize-=0.5f
   if(p.measureText(s)<=width){c.drawText(s,x,y,p);return}
   val words=s.split(" ");var line="";var offset=0f
-  for(w in words){val next=if(line.isEmpty())w else "$"+"line $"+ "w";if(p.measureText(next)>width&&line.isNotEmpty()){c.drawText(line,x,y+offset,p);offset+=12f;line=w}else line=next}
+  for(w in words){val next=if(line.isEmpty())w else line+" "+w;if(p.measureText(next)>width&&line.isNotEmpty()){c.drawText(line,x,y+offset,p);offset+=12f;line=w}else line=next}
   if(line.isNotEmpty())c.drawText(line,x,y+offset,p)
  }
 }
