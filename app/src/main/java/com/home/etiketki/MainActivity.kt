@@ -31,6 +31,7 @@ class MainActivity:Activity(){
  private lateinit var logView:TextView
  private val events=mutableListOf<String>()
  private var printer:BluetoothDevice?=null
+ @Volatile private var diagnosticBusy=false
  private val ui=Handler(Looper.getMainLooper())
  override fun onCreate(savedInstanceState:Bundle?){
   super.onCreate(savedInstanceState)
@@ -56,6 +57,7 @@ class MainActivity:Activity(){
   button(actions,"Тест"){print(true)}
   button(root,"Напечатать очередь"){print(false)}
   val logHeader=LinearLayout(this).apply{orientation=0};root.addView(logHeader)
+  button(logHeader,"Диагностика"){showDiagnostics()}
   button(logHeader,"Журнал"){showLog()}
   button(logHeader,"Копировать лог"){val cm=getSystemService(CLIPBOARD_SERVICE) as android.content.ClipboardManager;cm.setPrimaryClip(android.content.ClipData.newPlainText("Этикетки — лог",events.joinToString("\\n")));toast("Лог скопирован")}
   logView=TextView(this).apply{setTextColor(Color.LTGRAY);textSize=11f;maxLines=2};root.addView(logView)
@@ -117,6 +119,65 @@ class MainActivity:Activity(){
    .setItems(devices.map{(it.name?:"Без имени")+" ("+it.address+")"}.toTypedArray()){_,i->
     printer=devices[i];status.text="Выбран: "+devices[i].name;log("Выбран принтер: "+devices[i].name+" "+devices[i].address)
    }.show()
+ }
+ private fun showDiagnostics(){
+  val granted=Build.VERSION.SDK_INT<31||checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT)==PackageManager.PERMISSION_GRANTED
+  val adapter=(getSystemService(BLUETOOTH_SERVICE) as BluetoothManager).adapter
+  log("Разрешение Bluetooth: "+granted+"; адаптер включён: "+(adapter?.isEnabled==true))
+  val options=arrayOf("Подключение","TSPL — текст","CPCL — текст","ESC/POS — текст","TSPL — изображение","CPCL — изображение","ESC/POS — изображение","Запрос идентификатора")
+  AlertDialog.Builder(this).setTitle("Диагностика IP-802BT")
+   .setMessage("Разрешение: "+if(granted)"есть" else "нет")
+   .setItems(options){_,i->runDiagnostic(i)}
+   .setNegativeButton("Закрыть",null).show()
+ }
+ private fun runDiagnostic(index:Int){
+  val device=printer?:run{toast("Сначала выбери принтер");return}
+  if(diagnosticBusy){toast("Предыдущий тест ещё выполняется");return}
+  diagnosticBusy=true
+  thread{
+   var socket:BluetoothSocket?=null
+   try{
+    socket=device.createRfcommSocketToServiceRecord(UUID.fromString("00001101-0000-1000-8000-00805F9B34FB"))
+    socket.connect();log("Диагностика "+index+": подключено")
+    val data=when(index){
+     0->byteArrayOf()
+     1->"SIZE 75 mm,40 mm\r\nGAP 2 mm,0 mm\r\nCLS\r\nTEXT 30,40,\u00223\u0022,0,2,2,\u0022TEST TSPL\u0022\r\nPRINT 1\r\n".toByteArray(Charsets.US_ASCII)
+     2->"! 0 200 200 320 1\r\nTEXT 4 0 30 40 TEST CPCL\r\nFORM\r\nPRINT\r\n".toByteArray(Charsets.US_ASCII)
+     3->byteArrayOf(27,64)+"TEST ESC/POS\n\n".toByteArray(Charsets.US_ASCII)
+     4->page(listOf(Pair("TEST TSPL","IMAGE")))
+     5->diagnosticBitmap(true)
+     6->diagnosticBitmap(false)
+     else->byteArrayOf(29,73,65)
+    }
+    if(data.isNotEmpty()){
+     socket.outputStream.write(data);socket.outputStream.flush()
+     log("Диагностика "+index+": отправлено "+data.size+" байт; результат печати не подтверждён")
+    }
+    if(index==7){
+     socket.soTimeout=1200
+     try{
+      val b=ByteArray(128);val n=socket.inputStream.read(b)
+      if(n>0)log("Ответ HEX: "+b.take(n).joinToString(" "){"%02X".format(it)})
+     }catch(e:Exception){log("Ответ не получен: "+e.javaClass.simpleName)}
+    }
+   }catch(e:Exception){log("Диагностика "+index+": "+e.javaClass.simpleName+": "+e.message)}
+   finally{try{socket?.close()}catch(_:Exception){};diagnosticBusy=false;log("Диагностика "+index+": завершена")}
+  }
+ }
+ private fun diagnosticBitmap(cpcl:Boolean):ByteArray{
+  val w=384;val h=96;val bits=ByteArray(w/8*h)
+  for(y in 8 until 80)for(x in 8 until 180)
+   if(x<12||x>175||y<12||y>75)LabelLogic.setBlackPixel(bits,w,x,y)
+  val out=ByteArrayOutputStream()
+  if(cpcl){
+   out.write("! 0 200 200 160 1\r\nEG 48 96 0 0 ".toByteArray(Charsets.US_ASCII))
+   out.write(bits.joinToString(""){"%02X".format(it)}.toByteArray(Charsets.US_ASCII))
+   out.write("\r\nFORM\r\nPRINT\r\n".toByteArray(Charsets.US_ASCII))
+  }else{
+   out.write(byteArrayOf(27,64,29,118,48,0,48,0,96,0))
+   out.write(bits);out.write(byteArrayOf(10,10))
+  }
+  return out.toByteArray()
  }
  private fun print(test:Boolean){
   val dev=printer?:run{toast("Выбери принтер");return}
