@@ -28,23 +28,38 @@ class MainActivity:Activity(){
  private lateinit var catalog:LinearLayout
  private lateinit var status:TextView
  private lateinit var counter:TextView
+ private lateinit var logView:TextView
+ private val events=mutableListOf<String>()
  private var printer:BluetoothDevice?=null
  private val ui=Handler(Looper.getMainLooper())
  override fun onCreate(savedInstanceState:Bundle?){
   super.onCreate(savedInstanceState)
-  val root=LinearLayout(this).apply{orientation=1;setPadding(20,20,20,20)}
-  setContentView(ScrollView(this).apply{addView(root)})
-  root.addView(TextView(this).apply{text="Этикетки";textSize=28f})
-  root.addView(TextView(this).apply{text="75 × 120 мм · по три на листе · тест TSPL"})
-  status=TextView(this).apply{text="Принтер не выбран"};root.addView(status)
-  button(root,"Выбрать Bluetooth-принтер"){choosePrinter()}
-  val search=EditText(this).apply{hint="Поиск категорий";setSingleLine(true)};root.addView(search)
-  catalog=LinearLayout(this).apply{orientation=1};root.addView(catalog)
-  counter=TextView(this);root.addView(counter)
-  button(root,"Добавить свою наклейку"){edit("","")}
-  button(root,"Очистить очередь"){queue.clear();updateCount()}
-  button(root,"Напечатать тест"){print(true)}
+  window.statusBarColor=Color.rgb(18,20,24)
+  window.navigationBarColor=Color.rgb(18,20,24)
+  val root=LinearLayout(this).apply{orientation=1;setBackgroundColor(Color.rgb(18,20,24));setPadding(16,16,16,12)}
+  setContentView(root)
+  root.addView(TextView(this).apply{text="Этикетки";textSize=26f;setTextColor(Color.WHITE);setTypeface(null,Typeface.BOLD)})
+  root.addView(TextView(this).apply{text="75 × 120 мм · 3 этикетки на лист";textSize=13f;setTextColor(Color.LTGRAY)})
+  status=TextView(this).apply{text="Принтер не выбран";setTextColor(Color.rgb(117,216,211));setPadding(0,12,0,8)};root.addView(status)
+  button(root,"Выбрать принтер"){choosePrinter()}
+  val search=EditText(this).apply{hint="Поиск по категориям";setSingleLine(true);setTextColor(Color.WHITE);setHintTextColor(Color.GRAY);setPadding(12,8,12,8)}
+  root.addView(search)
+  val scroll=ScrollView(this).apply{isFillViewport=false}
+  catalog=LinearLayout(this).apply{orientation=1}
+  scroll.addView(catalog)
+  root.addView(scroll,LinearLayout.LayoutParams(-1,0,1f))
+  counter=TextView(this).apply{setTextColor(Color.WHITE);setPadding(0,8,0,8);maxLines=2};root.addView(counter)
+  val actions=LinearLayout(this).apply{orientation=0}
+  root.addView(actions)
+  button(actions,"+ Своя"){edit("","")}
+  button(actions,"Очистить"){queue.clear();updateCount();log("Очередь очищена")}
+  button(actions,"Тест"){print(true)}
   button(root,"Напечатать очередь"){print(false)}
+  val logHeader=LinearLayout(this).apply{orientation=0};root.addView(logHeader)
+  button(logHeader,"Журнал"){showLog()}
+  button(logHeader,"Копировать лог"){val cm=getSystemService(CLIPBOARD_SERVICE) as android.content.ClipboardManager;cm.setPrimaryClip(android.content.ClipData.newPlainText("Этикетки — лог",events.joinToString("\\n")));toast("Лог скопирован")}
+  logView=TextView(this).apply{setTextColor(Color.LTGRAY);textSize=11f;maxLines=2};root.addView(logView)
+  log("Приложение запущено")
   search.addTextChangedListener(object:TextWatcher{
    override fun beforeTextChanged(s:CharSequence?,start:Int,count:Int,after:Int){}
    override fun onTextChanged(s:CharSequence?,start:Int,before:Int,count:Int){render(s.toString())}
@@ -55,13 +70,27 @@ class MainActivity:Activity(){
    requestPermissions(arrayOf(Manifest.permission.BLUETOOTH_CONNECT),1)
  }
  private fun button(parent:LinearLayout,label:String,fn:()->Unit){
-  parent.addView(Button(this).apply{text=label;setOnClickListener{fn()}})
+  val b=Button(this).apply{text=label;isAllCaps=false;textSize=13f;setTextColor(Color.WHITE);setBackgroundTintList(android.content.res.ColorStateList.valueOf(Color.rgb(49,57,68)));setOnClickListener{fn()}}
+  parent.addView(b,LinearLayout.LayoutParams(0,-2,1f).takeIf{parent.orientation==0}?:LinearLayout.LayoutParams(-1,-2))
  }
  private fun render(q:String){
   catalog.removeAllViews()
   items.filter{it.first.contains(q,true)||it.second.contains(q,true)}.forEach{(a,b)->
-   button(catalog,a+" · "+b){edit(a,b)}
+   val card=LinearLayout(this).apply{orientation=1;setPadding(18,12,18,12);setBackgroundColor(Color.rgb(32,36,43));setOnClickListener{edit(a,b)}}
+   card.addView(TextView(this).apply{text=a;textSize=16f;setTextColor(Color.WHITE);setTypeface(null,Typeface.BOLD)})
+   card.addView(TextView(this).apply{text=b;textSize=13f;setTextColor(Color.LTGRAY)})
+   catalog.addView(card,LinearLayout.LayoutParams(-1,-2).apply{bottomMargin=5})
   }
+ }
+ private fun log(s:String){
+  ui.post{
+   val entry=java.text.SimpleDateFormat("HH:mm:ss",java.util.Locale.getDefault()).format(java.util.Date())+"  "+s
+   events.add(entry);if(events.size>200)events.removeAt(0)
+   if(::logView.isInitialized)logView.text=entry
+  }
+ }
+ private fun showLog(){
+  AlertDialog.Builder(this).setTitle("Журнал Bluetooth и печати").setMessage(events.joinToString("\\n").ifEmpty{"Пока пусто"}).setPositiveButton("Закрыть",null).show()
  }
  private fun edit(a:String,b:String){
   val layout=LinearLayout(this).apply{orientation=1;setPadding(24,0,24,0)}
@@ -69,7 +98,7 @@ class MainActivity:Activity(){
   val detail=EditText(this).apply{setText(b);hint="Примеры"}
   layout.addView(title);layout.addView(detail)
   AlertDialog.Builder(this).setTitle("Наклейка").setView(layout)
-   .setPositiveButton("Добавить"){_,_->if(title.text.isNotBlank()){queue.add(Pair(title.text.toString(),detail.text.toString()));updateCount()}}
+   .setPositiveButton("Добавить"){_,_->if(title.text.isNotBlank()){queue.add(Pair(title.text.toString(),detail.text.toString()));updateCount();log("Добавлена этикетка: "+title.text)}}
    .setNegativeButton("Отмена",null).show()
  }
  private fun updateCount(){
@@ -86,24 +115,24 @@ class MainActivity:Activity(){
   if(devices.isEmpty()){toast("Сначала сопряги принтер в настройках Android");return}
   AlertDialog.Builder(this).setTitle("Сопряжённые устройства")
    .setItems(devices.map{(it.name?:"Без имени")+" ("+it.address+")"}.toTypedArray()){_,i->
-    printer=devices[i];status.text="Выбран: "+devices[i].name
+    printer=devices[i];status.text="Выбран: "+devices[i].name;log("Выбран принтер: "+devices[i].name+" "+devices[i].address)
    }.show()
  }
  private fun print(test:Boolean){
   val dev=printer?:run{toast("Выбери принтер");return}
   if(!test&&queue.isEmpty()){toast("Очередь пуста");return}
   val pages=if(test)listOf(listOf(Pair("ТЕСТ ПЕЧАТИ","AIYIN IP-802BT"),Pair("ЭЛЕКТРОНИКА","Кабели · зарядки"),Pair("ДЕТСКИЕ ВЕЩИ","Одежда · игрушки"))) else LabelLogic.pages(queue)
-  status.text="Подключение…"
+  status.text="Подключение…";log("Начало печати: тест="+test+", листов="+pages.size)
   thread{
    try{
     val adapter=(getSystemService(BLUETOOTH_SERVICE) as BluetoothManager).adapter
     val socket=dev.createRfcommSocketToServiceRecord(UUID.fromString("00001101-0000-1000-8000-00805F9B34FB"))
     try{
-     socket.connect()
-     pages.forEach{socket.outputStream.write(page(it));socket.outputStream.flush();Thread.sleep(900)}
+     log("RFCOMM: подключение к "+dev.address);socket.connect();log("RFCOMM: соединение установлено")
+     pages.forEachIndexed{index,labels->val bytes=page(labels);log("Отправка листа "+(index+1)+": "+bytes.size+" байт");socket.outputStream.write(bytes);socket.outputStream.flush();log("Лист "+(index+1)+": данные отправлены");Thread.sleep(900)}
      ui.post{status.text="Команды отправлены. Проверь печать."}
-    }finally{socket.close()}
-   }catch(e:Exception){ui.post{status.text="Ошибка: "+e.javaClass.simpleName+": "+e.message}}
+    }finally{socket.close();log("Соединение закрыто")}
+   }catch(e:Exception){log("ОШИБКА: "+e.javaClass.simpleName+": "+e.message);ui.post{status.text="Ошибка: "+e.javaClass.simpleName+": "+e.message}}
   }
  }
  private fun page(labels:List<Pair<String,String>>):ByteArray{
