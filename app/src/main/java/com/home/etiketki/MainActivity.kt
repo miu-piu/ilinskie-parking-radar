@@ -141,7 +141,7 @@ class MainActivity:Activity(){
     socket.connect();log("Диагностика "+index+": подключено")
     val data=when(index){
      0->byteArrayOf()
-     1->"SIZE 75 mm,40 mm\r\nGAP 2 mm,0 mm\r\nCLS\r\nTEXT 30,40,\u00223\u0022,0,2,2,\u0022TEST TSPL\u0022\r\nPRINT 1\r\n".toByteArray(Charsets.US_ASCII)
+     1->"SIZE 75 mm,40 mm\r\nGAP 2 mm,0 mm\r\nCLS\r\nTEXT 30,40,\"3\",0,2,2,\"TEST TSPL\"\r\nPRINT 1\r\n".toByteArray(Charsets.US_ASCII)
      2->"! 0 200 200 320 1\r\nTEXT 4 0 30 40 TEST CPCL\r\nFORM\r\nPRINT\r\n".toByteArray(Charsets.US_ASCII)
      3->byteArrayOf(27,64)+"TEST ESC/POS\n\n".toByteArray(Charsets.US_ASCII)
      4->page(listOf(Pair("TEST TSPL","IMAGE")))
