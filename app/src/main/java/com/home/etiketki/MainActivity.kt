@@ -97,7 +97,6 @@ class MainActivity:Activity(){
   thread{
    try{
     val adapter=(getSystemService(BLUETOOTH_SERVICE) as BluetoothManager).adapter
-    adapter.cancelDiscovery()
     val socket=dev.createRfcommSocketToServiceRecord(UUID.fromString("00001101-0000-1000-8000-00805F9B34FB"))
     try{
      socket.connect()
