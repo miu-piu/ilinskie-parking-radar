@@ -125,8 +125,7 @@ class MainActivity:Activity(){
   val adapter=(getSystemService(BLUETOOTH_SERVICE) as BluetoothManager).adapter
   log("Разрешение Bluetooth: "+granted+"; адаптер включён: "+(adapter?.isEnabled==true))
   val options=arrayOf("Подключение","TSPL — текст","CPCL — текст","ESC/POS — текст","TSPL — изображение","CPCL — изображение","ESC/POS — изображение","Запрос идентификатора")
-  AlertDialog.Builder(this).setTitle("Диагностика IP-802BT")
-   .setMessage("Разрешение: "+if(granted)"есть" else "нет")
+  AlertDialog.Builder(this).setTitle("Диагностика · Bluetooth "+if(granted)"разрешён" else "нет доступа")
    .setItems(options){_,i->runDiagnostic(i)}
    .setNegativeButton("Закрыть",null).show()
  }
