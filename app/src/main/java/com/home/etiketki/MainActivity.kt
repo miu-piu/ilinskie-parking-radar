@@ -154,10 +154,10 @@ class MainActivity:Activity(){
      log("Диагностика "+index+": отправлено "+data.size+" байт; результат печати не подтверждён")
     }
     if(index==7){
-     socket.soTimeout=1200
+     Thread.sleep(350)
      try{
-      val b=ByteArray(128);val n=socket.inputStream.read(b)
-      if(n>0)log("Ответ HEX: "+b.take(n).joinToString(" "){"%02X".format(it)})
+      val b=ByteArray(128);val n=if(socket.inputStream.available()>0)socket.inputStream.read(b) else 0
+      if(n>0)log("Ответ HEX: "+b.take(n).joinToString(" "){"%02X".format(it)}) else log("Ответ отсутствует")
      }catch(e:Exception){log("Ответ не получен: "+e.javaClass.simpleName)}
     }
    }catch(e:Exception){log("Диагностика "+index+": "+e.javaClass.simpleName+": "+e.message)}
