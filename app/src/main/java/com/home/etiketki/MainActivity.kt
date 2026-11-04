@@ -73,7 +73,7 @@ class MainActivity:Activity(){
    .setNegativeButton("Отмена",null).show()
  }
  private fun updateCount(){
-  counter.text="Очередь: "+queue.size+" наклеек · "+((queue.size+2)/3)+" листов\n"+queue.take(12).joinToString(" · "){it.first}
+  counter.text="Очередь: "+queue.size+" наклеек · "+LabelLogic.sheetCount(queue.size)+" листов\n"+queue.take(12).joinToString(" · "){it.first}
  }
  private fun toast(s:String){Toast.makeText(this,s,Toast.LENGTH_LONG).show()}
  private fun choosePrinter(){
@@ -92,7 +92,7 @@ class MainActivity:Activity(){
  private fun print(test:Boolean){
   val dev=printer?:run{toast("Выбери принтер");return}
   if(!test&&queue.isEmpty()){toast("Очередь пуста");return}
-  val pages=if(test)listOf(listOf(Pair("ТЕСТ ПЕЧАТИ","AIYIN IP-802BT"),Pair("ЭЛЕКТРОНИКА","Кабели · зарядки"),Pair("ДЕТСКИЕ ВЕЩИ","Одежда · игрушки"))) else queue.chunked(3)
+  val pages=if(test)listOf(listOf(Pair("ТЕСТ ПЕЧАТИ","AIYIN IP-802BT"),Pair("ЭЛЕКТРОНИКА","Кабели · зарядки"),Pair("ДЕТСКИЕ ВЕЩИ","Одежда · игрушки"))) else LabelLogic.pages(queue)
   status.text="Подключение…"
   thread{
    try{
@@ -108,21 +108,21 @@ class MainActivity:Activity(){
   }
  }
  private fun page(labels:List<Pair<String,String>>):ByteArray{
-  val w=600;val h=960;val bitmap=Bitmap.createBitmap(w,h,Bitmap.Config.ARGB_8888)
+  val w=LabelLogic.WIDTH_DOTS;val h=LabelLogic.HEIGHT_DOTS;val bitmap=Bitmap.createBitmap(w,h,Bitmap.Config.ARGB_8888)
   val canvas=Canvas(bitmap);canvas.drawColor(Color.WHITE)
   val p=Paint(Paint.ANTI_ALIAS_FLAG).apply{color=Color.BLACK;typeface=Typeface.DEFAULT_BOLD;textSize=34f}
   labels.forEachIndexed{index,pair->
-   val y=index*320
+   val y=index*LabelLogic.LABEL_HEIGHT_DOTS
    canvas.drawRect(20f,(y+16).toFloat(),580f,(y+21).toFloat(),p)
    drawText(canvas,p,pair.first,28f,(y+115).toFloat())
    drawText(canvas,p,pair.second,28f,(y+195).toFloat())
    if(index<2){p.color=Color.GRAY;var x=20f;while(x<580f){canvas.drawLine(x,(y+319).toFloat(),x+12f,(y+319).toFloat(),p);x+=22f};p.color=Color.BLACK}
   }
-  val rowBytes=(w+7)/8;val bits=ByteArray(rowBytes*h)
+  val rowBytes=LabelLogic.rowBytes(w);val bits=ByteArray(rowBytes*h)
   for(y in 0 until h)for(x in 0 until w){
    val c=bitmap.getPixel(x,y)
    if((Color.red(c)*299+Color.green(c)*587+Color.blue(c)*114)/1000<150){
-    val i=y*rowBytes+x/8;bits[i]=(bits[i].toInt() or (0x80 shr (x%8))).toByte()
+    LabelLogic.setBlackPixel(bits,w,x,y)
    }
   }
   bitmap.recycle()
