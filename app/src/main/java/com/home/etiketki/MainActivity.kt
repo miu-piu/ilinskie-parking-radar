@@ -5,6 +5,10 @@ import android.app.*
 import android.bluetooth.*
 import android.content.pm.PackageManager
 import android.graphics.*
+import android.graphics.pdf.PdfDocument
+import android.content.Intent
+import android.net.Uri
+import java.io.File
 import android.os.*
 import android.text.*
 import android.widget.*
@@ -55,6 +59,7 @@ class MainActivity:Activity(){
   button(actions,"+ Своя"){edit("","")}
   button(actions,"Очистить"){queue.clear();updateCount();log("Очередь очищена")}
   button(actions,"Тест"){print(true)}
+  button(root,"Открыть в Label Expert"){exportToLabelExpert()}
   button(root,"Напечатать очередь"){print(false)}
   val logHeader=LinearLayout(this).apply{orientation=0};root.addView(logHeader)
   button(logHeader,"Диагностика"){showDiagnostics()}
@@ -119,6 +124,51 @@ class MainActivity:Activity(){
    .setItems(devices.map{(it.name?:"Без имени")+" ("+it.address+")"}.toTypedArray()){_,i->
     printer=devices[i];status.text="Выбран: "+devices[i].name;log("Выбран принтер: "+devices[i].name+" "+devices[i].address)
    }.show()
+ }
+
+ private fun exportToLabelExpert(){
+  if(queue.isEmpty()){toast("Сначала добавь этикетки");return}
+  try{
+   val pdf=PdfDocument()
+   val width=213;val height=340
+   LabelLogic.pages(queue).forEachIndexed{index,labels->
+    val page=pdf.startPage(PdfDocument.PageInfo.Builder(width,height,index+1).create())
+    val c=page.canvas;c.drawColor(Color.WHITE)
+    val p=Paint(Paint.ANTI_ALIAS_FLAG).apply{color=Color.BLACK;typeface=Typeface.DEFAULT_BOLD}
+    labels.forEachIndexed{slot,pair->
+     val top=slot*113f
+     p.strokeWidth=1.2f;c.drawLine(7f,top+7f,206f,top+7f,p)
+     p.textSize=14f
+     while(p.measureText(pair.first)>195f&&p.textSize>8f)p.textSize-=0.5f
+     c.drawText(pair.first,10f,top+43f,p)
+     p.typeface=Typeface.DEFAULT;p.textSize=10f
+     while(p.measureText(pair.second)>195f&&p.textSize>7f)p.textSize-=0.5f
+     c.drawText(pair.second,10f,top+70f,p)
+    }
+    pdf.finishPage(page)
+   }
+   val dir=File(cacheDir,"shared");dir.mkdirs()
+   val file=File(dir,"etiketki.pdf")
+   file.outputStream().use{pdf.writeTo(it)}
+   pdf.close()
+   val uri=Uri.parse("content://"+packageName+".share/etiketki.pdf")
+   val view=Intent(Intent.ACTION_VIEW).apply{
+    setDataAndType(uri,"application/pdf")
+    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    setPackage("in.kahub.labelexpert")
+    clipData=android.content.ClipData.newUri(contentResolver,"Этикетки",uri)
+   }
+   try{startActivity(view);log("PDF передан в Label Expert")}
+   catch(e:Exception){
+    log("Label Expert не принимает прямое открытие PDF: "+e.javaClass.simpleName)
+    val generic=Intent(Intent.ACTION_VIEW).apply{
+     setDataAndType(uri,"application/pdf")
+     addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+     clipData=android.content.ClipData.newUri(contentResolver,"Этикетки",uri)
+    }
+    startActivity(Intent.createChooser(generic,"Открыть этикетки в…"))
+   }
+  }catch(e:Exception){log("Экспорт: "+e.javaClass.simpleName+": "+e.message);toast("Не удалось открыть PDF: "+e.message)}
  }
  private fun showDiagnostics(){
   val granted=Build.VERSION.SDK_INT<31||checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT)==PackageManager.PERMISSION_GRANTED
