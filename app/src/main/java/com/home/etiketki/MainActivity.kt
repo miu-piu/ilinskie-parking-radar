@@ -1,277 +1,142 @@
 package com.home.etiketki
 
-import android.Manifest
 import android.app.*
-import android.bluetooth.*
-import android.content.pm.PackageManager
+import android.os.Bundle
+import android.content.*
 import android.graphics.*
 import android.graphics.pdf.PdfDocument
-import android.content.Intent
 import android.net.Uri
-import java.io.File
-import android.os.*
 import android.text.*
+import android.view.*
 import android.widget.*
-import java.io.ByteArrayOutputStream
-import java.util.UUID
-import kotlin.concurrent.thread
+import java.io.File
+import java.util.Locale
 
 class MainActivity:Activity(){
- private val items=listOf(
- "Электроника|Кабели · зарядки · переходники","Кабели|USB-C · HDMI · Lightning","Зарядки|Блоки питания · адаптеры","Компьютеры|Мыши · клавиатуры","Телефоны|Чехлы · стекла","Батарейки|AA · AAA · аккумуляторы",
- "Инструменты|Отвёртки · ключи · биты","Крепёж|Винты · гайки · шайбы","Ремонт|Клей · ленты · герметики","Умный дом|Датчики · реле","Документы|Договоры · справки","Гарантии|Чеки · инструкции",
- "Канцелярия|Ручки · карандаши","Бумага|Блокноты · конверты","Фото|Альбомы · рамки","Праздники|Декор · свечи","Новый год|Игрушки · гирлянды","Подарки|Упаковка · открытки",
- "Хобби|Материалы · принадлежности","Шитьё|Нитки · иглы","Кухня|Принадлежности","Выпечка|Формы · насадки","Специи|Приправы · смеси","Запасы|Крупы · макароны",
- "Контейнеры|Крышки · банки","Уборка|Салфетки · губки","Бытовая химия|Чистящие средства","Стирка|Средства · мешки","Косметика|Уход · маски","Уход за волосами|Шампуни · маски",
- "Аптечка — общая|Перевязочные материалы","Лекарства — мои|Препараты · витамины","Лекарства — мужа|Препараты · витамины","Лекарства — детские|Препараты · термометр",
- "Одежда — моя|Сезонные вещи","Одежда — мужа|Сезонные вещи","Обувь — моя|Сезонная обувь","Обувь — мужа|Сезонная обувь","Аксессуары — мои|Сумки · ремни","Аксессуары — мужа|Ремни · часы",
- "Детская одежда|Боди · слипы","Детская обувь|Ботинки · сапоги","Детские игрушки|Игры · фигурки","Детское творчество|Краски · бумага","Детский уход|Подгузники · кремы",
- "Собака|Всё для собаки","Автомобиль|Автоаксессуары","Путешествия|Чемоданы","Сезонное|Временное хранение","Запас|Резервные вещи"
- ).map{val a=it.split("|",limit=2);Pair(a[0],a[1])}
- private val queue=mutableListOf<Pair<String,String>>()
- private lateinit var catalog:LinearLayout
- private lateinit var status:TextView
- private lateinit var counter:TextView
- private lateinit var logView:TextView
- private val events=mutableListOf<String>()
- private var printer:BluetoothDevice?=null
- @Volatile private var diagnosticBusy=false
- private val ui=Handler(Looper.getMainLooper())
- override fun onCreate(savedInstanceState:Bundle?){
-  super.onCreate(savedInstanceState)
-  window.statusBarColor=Color.rgb(18,20,24)
-  window.navigationBarColor=Color.rgb(18,20,24)
-  val root=LinearLayout(this).apply{orientation=1;setBackgroundColor(Color.rgb(18,20,24));setPadding(16,16,16,12)}
-  setContentView(root)
-  root.addView(TextView(this).apply{text="Этикетки";textSize=26f;setTextColor(Color.WHITE);setTypeface(null,Typeface.BOLD)})
-  root.addView(TextView(this).apply{text="75 × 120 мм · 3 этикетки на лист";textSize=13f;setTextColor(Color.LTGRAY)})
-  status=TextView(this).apply{text="Принтер не выбран";setTextColor(Color.rgb(117,216,211));setPadding(0,12,0,8)};root.addView(status)
-  button(root,"Выбрать принтер"){choosePrinter()}
-  val search=EditText(this).apply{hint="Поиск по категориям";setSingleLine(true);setTextColor(Color.WHITE);setHintTextColor(Color.GRAY);setPadding(12,8,12,8)}
+ data class Label(val title:String,val detail:String="")
+ private val sections=linkedMapOf(
+ "Кухня" to "Бакалея|Крупы|Макароны|Семена|Крупы и макароны|Макароны · Крупы · Семена|Рис|Гречка|Овсянка|Бобовые|Мука|Сахар|Соль|Специи|Приправы|Масла|Соусы|Чай|Кофе|Какао|Завтраки|Снеки|Сладости|Орехи|Сухофрукты|Консервы|Запасы|Выпечка|Для выпечки|Кондитерские принадлежности|Контейнеры|Крышки|Посуда|Столовые приборы|Кухонный текстиль|Пакеты|Фольга и плёнка|Хранение продуктов",
+ "Одежда" to "Женская одежда|Мужская одежда|Детская одежда|Верхняя одежда|Повседневная одежда|Праздничная одежда|Спортивная одежда|Домашняя одежда|Летняя одежда|Зимняя одежда|Демисезонная одежда|Нижнее бельё|Носки|Колготки|Футболки|Рубашки|Брюки|Джинсы|Платья|Юбки|Свитеры|Толстовки|Куртки|Пальто|Шапки|Шарфы|Перчатки|Шапки · Шарфы · Перчатки|Сумки|Ремни|Аксессуары|На вырост|Мало|Велико|Отдать|Продать|На хранение",
+ "Детское" to "Игрушки|Мягкие игрушки|Конструкторы|Кубики|Машинки|Куклы|Книги|Развивающие игры|Настольные игры|Творчество|Краски|Карандаши|Бумага|Лепка|Пазлы|Прогулки|Подгузники|Гигиена|Детская обувь|Детская одежда|Боди|Слипы|Пижамы|Комбинезоны|Размер 74|Размер 80|Размер 86|Размер 92|Размер 98|Размер 104|На вырост|Мало|Велико|Зима|Лето|Весна · Осень",
+ "Хозяйство" to "Уборка|Бытовая химия|Чистящие средства|Губки|Тряпки|Салфетки|Перчатки|Стирка|Средства для стирки|Порошки|Кондиционеры|Мешки для стирки|Пакеты для мусора|Расходники|Запас|Лампочки|Батарейки|Аккумуляторы|Инструменты|Отвёртки|Ключи|Крепёж|Винты · Гайки · Шайбы|Клей|Скотч|Ремонт|Сантехника|Электрика|Сад|Растения",
+ "Техника" to "Кабели|Зарядки|Адаптеры|Кабели · Зарядки · Адаптеры|USB-C|HDMI|Переходники|Блоки питания|Компьютеры|Мыши|Клавиатуры|Наушники|Телефоны|Чехлы|Защитные стёкла|Флешки|Карты памяти|Умный дом|Датчики|Пульты|Запчасти",
+ "Ванная" to "Косметика|Уход за лицом|Уход за телом|Уход за волосами|Шампуни|Маски|Кремы|Сыворотки|Средства для душа|Гигиена|Зубные щётки|Зубная паста|Полотенца|Аптечка|Перевязочные материалы|Лекарства|Витамины|Запас косметики",
+ "Документы" to "Документы|Договоры|Справки|Свидетельства|Гарантии|Чеки|Инструкции|Квитанции|Налоги|Страхование|Автомобиль|Недвижимость|Работа|Финансы|Архив|Канцелярия|Бумага|Конверты|Блокноты|Ручки",
+ "Сезонное" to "Новый год|Ёлочные игрушки|Гирлянды|Украшения|Праздники|Декор|Свечи|Подарки|Упаковка подарков|Открытки|Путешествия|Чемоданы|Дорожные принадлежности|Пикник|Отдых|Спорт|Хобби|Шитьё|Нитки|Иглы|Фото|Альбомы|Собака|Товары для животных"
+ )
+ private val queue=mutableListOf<Label>()
+ private val picked=linkedSetOf<String>()
+ private lateinit var list:LinearLayout
+ private lateinit var search:EditText
+ private lateinit var footer:TextView
+ private var section="Все"
+ private val bg=Color.rgb(248,247,243)
+ private val ink=Color.rgb(39,47,43)
+ private val sage=Color.rgb(92,112,98)
+ override fun onCreate(savedInstanceState:Bundle?){super.onCreate(savedInstanceState);window.statusBarColor=bg;window.navigationBarColor=bg;window.decorView.systemUiVisibility=View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR or View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;home()}
+ private fun dp(n:Int)=(n*resources.displayMetrics.density).toInt()
+ private fun txt(s:String,size:Float=16f,bold:Boolean=false)=TextView(this).apply{text=s;textSize=size;setTextColor(ink);if(bold)setTypeface(null,1);setPadding(dp(8),dp(9),dp(8),dp(9))}
+ private fun btn(s:String,action:()->Unit)=Button(this).apply{text=s;isAllCaps=false;textSize=13f;setTextColor(Color.WHITE);backgroundTintList=android.content.res.ColorStateList.valueOf(sage);setOnClickListener{action()}}
+ private fun base(title:String):LinearLayout{
+  val root=LinearLayout(this).apply{orientation=1;setBackgroundColor(bg);setPadding(dp(12),dp(12),dp(12),dp(12))}
+  setContentView(root);root.addView(txt(title,25f,true))
+  return root
+ }
+ private fun home(){
+  val root=base("По полочкам")
+  search=EditText(this).apply{hint="Найти или создать наклейку";setSingleLine(true);textSize=16f}
   root.addView(search)
-  val scroll=ScrollView(this).apply{isFillViewport=false}
-  catalog=LinearLayout(this).apply{orientation=1}
-  scroll.addView(catalog)
-  root.addView(scroll,LinearLayout.LayoutParams(-1,0,1f))
-  counter=TextView(this).apply{setTextColor(Color.WHITE);setPadding(0,8,0,8);maxLines=2};root.addView(counter)
-  val actions=LinearLayout(this).apply{orientation=0}
-  root.addView(actions)
-  button(actions,"+ Своя"){edit("","")}
-  button(actions,"Очистить"){queue.clear();updateCount();log("Очередь очищена")}
-  button(actions,"Тест"){print(true)}
-  button(root,"Открыть в Label Expert"){exportToLabelExpert()}
-  button(root,"Напечатать очередь"){print(false)}
-  val logHeader=LinearLayout(this).apply{orientation=0};root.addView(logHeader)
-  button(logHeader,"Диагностика"){showDiagnostics()}
-  button(logHeader,"Журнал"){showLog()}
-  button(logHeader,"Копировать лог"){val cm=getSystemService(CLIPBOARD_SERVICE) as android.content.ClipboardManager;cm.setPrimaryClip(android.content.ClipData.newPlainText("Этикетки — лог",events.joinToString("\\n")));toast("Лог скопирован")}
-  logView=TextView(this).apply{setTextColor(Color.LTGRAY);textSize=11f;maxLines=2};root.addView(logView)
-  log("Приложение запущено")
+  val chips=HorizontalScrollView(this);val row=LinearLayout(this).apply{orientation=0}
+  (listOf("Все")+sections.keys).forEach{cat->row.addView(btn(cat){section=cat;render()})}
+  chips.addView(row);root.addView(chips)
+  val scroll=ScrollView(this);list=LinearLayout(this).apply{orientation=1};scroll.addView(list);root.addView(scroll,LinearLayout.LayoutParams(-1,0,1f))
+  footer=txt("",14f);root.addView(footer)
+  root.addView(btn("Выбранные → объединить в одну"){combine()})
+  root.addView(btn("Очередь и печать"){printScreen()})
   search.addTextChangedListener(object:TextWatcher{
    override fun beforeTextChanged(s:CharSequence?,start:Int,count:Int,after:Int){}
-   override fun onTextChanged(s:CharSequence?,start:Int,before:Int,count:Int){render(s.toString())}
+   override fun onTextChanged(s:CharSequence?,start:Int,before:Int,count:Int){render()}
    override fun afterTextChanged(s:Editable?){}
   })
-  render("");updateCount()
-  if(Build.VERSION.SDK_INT>=31&&checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT)!=PackageManager.PERMISSION_GRANTED)
-   requestPermissions(arrayOf(Manifest.permission.BLUETOOTH_CONNECT),1)
+  render()
  }
- private fun button(parent:LinearLayout,label:String,fn:()->Unit){
-  val b=Button(this).apply{text=label;isAllCaps=false;textSize=13f;setTextColor(Color.WHITE);setBackgroundTintList(android.content.res.ColorStateList.valueOf(Color.rgb(49,57,68)));setOnClickListener{fn()}}
-  parent.addView(b,LinearLayout.LayoutParams(0,-2,1f).takeIf{parent.orientation==0}?:LinearLayout.LayoutParams(-1,-2))
- }
- private fun render(q:String){
-  catalog.removeAllViews()
-  items.filter{it.first.contains(q,true)||it.second.contains(q,true)}.forEach{(a,b)->
-   val card=LinearLayout(this).apply{orientation=1;setPadding(18,12,18,12);setBackgroundColor(Color.rgb(32,36,43));setOnClickListener{edit(a,b)}}
-   card.addView(TextView(this).apply{text=a;textSize=16f;setTextColor(Color.WHITE);setTypeface(null,Typeface.BOLD)})
-   card.addView(TextView(this).apply{text=b;textSize=13f;setTextColor(Color.LTGRAY)})
-   catalog.addView(card,LinearLayout.LayoutParams(-1,-2).apply{bottomMargin=5})
+ private fun all()=sections.flatMap{(cat,str)->str.split("|").map{cat to it}}.distinctBy{it.second.lowercase(Locale.ROOT)}
+ private fun render(){
+  list.removeAllViews();val q=search.text.toString().trim()
+  val found=all().filter{(cat,name)->(section=="Все"||section==cat)&&(q.isBlank()||name.contains(q,true)||cat.contains(q,true))}
+  found.take(180).forEach{(cat,name)->
+   val line=LinearLayout(this).apply{orientation=0;gravity=Gravity.CENTER_VERTICAL}
+   val check=CheckBox(this).apply{isChecked=name in picked;setOnCheckedChangeListener{_,yes->if(yes)picked.add(name) else picked.remove(name);updateFooter()}}
+   line.addView(check)
+   val label=txt(name,16f,true);line.addView(label,LinearLayout.LayoutParams(0,-2,1f))
+   line.addView(btn("+"){edit(name,"")})
+   list.addView(line)
   }
+  if(q.isNotBlank()&&found.none{it.second.equals(q,true)})list.addView(btn("Создать «$q»"){edit(q,"")})
+  if(found.size>180)list.addView(txt("Уточни поиск, чтобы увидеть остальные варианты",13f))
+  updateFooter()
  }
- private fun log(s:String){
-  ui.post{
-   val entry=java.text.SimpleDateFormat("HH:mm:ss",java.util.Locale.getDefault()).format(java.util.Date())+"  "+s
-   events.add(entry);if(events.size>200)events.removeAt(0)
-   if(::logView.isInitialized)logView.text=entry
+ private fun updateFooter(){footer.text="Выбрано для объединения: ${picked.size}    ·    В очереди: ${queue.size}"}
+ private fun combine(){
+  if(picked.isEmpty()){Toast.makeText(this,"Отметь названия галочками",0).show();return}
+  edit(picked.joinToString(" · "),"")
+ }
+ private fun edit(name:String,detail:String){
+  val box=LinearLayout(this).apply{orientation=1;setPadding(dp(20),0,dp(20),0)}
+  val title=EditText(this).apply{setText(name);hint="Название"}
+  val sub=EditText(this).apply{setText(detail);hint="Уточнение (необязательно)"}
+  box.addView(title);box.addView(sub)
+  AlertDialog.Builder(this).setTitle("Наклейка").setView(box).setNegativeButton("Отмена",null)
+   .setPositiveButton("В очередь"){_,_->val s=title.text.toString().trim();if(s.isNotEmpty()){queue.add(Label(s,sub.text.toString().trim()));picked.clear();updateFooter()}}.show()
+ }
+ private fun printScreen(){
+  val root=base("Печать")
+  root.addView(txt("75 × 120 мм · 3 наклейки на лист",14f))
+  val scroll=ScrollView(this);val content=LinearLayout(this).apply{orientation=1};scroll.addView(content)
+  root.addView(scroll,LinearLayout.LayoutParams(-1,0,1f))
+  fun redraw(){
+   content.removeAllViews()
+   queue.forEachIndexed{i,l->
+    val row=LinearLayout(this).apply{orientation=0;gravity=Gravity.CENTER_VERTICAL}
+    row.addView(txt("${i+1}. ${l.title}",14f),LinearLayout.LayoutParams(0,-2,1f))
+    row.addView(btn("×"){queue.removeAt(i);redraw()})
+    content.addView(row)
+   }
+   if(queue.isEmpty())content.addView(txt("Очередь пуста. Выбери готовые наклейки.",15f))
+   content.addView(txt("Листов: ${LabelLogic.sheetCount(queue.size)}",15f,true))
   }
+  redraw()
+  root.addView(btn("Открыть PDF для печати"){exportPdf()})
+  root.addView(btn("Добавить наклейки"){home()})
  }
- private fun showLog(){
-  AlertDialog.Builder(this).setTitle("Журнал Bluetooth и печати").setMessage(events.joinToString("\\n").ifEmpty{"Пока пусто"}).setPositiveButton("Закрыть",null).show()
- }
- private fun edit(a:String,b:String){
-  val layout=LinearLayout(this).apply{orientation=1;setPadding(24,0,24,0)}
-  val title=EditText(this).apply{setText(a);hint="Категория"}
-  val detail=EditText(this).apply{setText(b);hint="Примеры"}
-  layout.addView(title);layout.addView(detail)
-  AlertDialog.Builder(this).setTitle("Наклейка").setView(layout)
-   .setPositiveButton("Добавить"){_,_->if(title.text.isNotBlank()){queue.add(Pair(title.text.toString(),detail.text.toString()));updateCount();log("Добавлена этикетка: "+title.text)}}
-   .setNegativeButton("Отмена",null).show()
- }
- private fun updateCount(){
-  counter.text="Очередь: "+queue.size+" наклеек · "+LabelLogic.sheetCount(queue.size)+" листов\n"+queue.take(12).joinToString(" · "){it.first}
- }
- private fun toast(s:String){Toast.makeText(this,s,Toast.LENGTH_LONG).show()}
- private fun choosePrinter(){
-  if(Build.VERSION.SDK_INT>=31&&checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT)!=PackageManager.PERMISSION_GRANTED){
-   requestPermissions(arrayOf(Manifest.permission.BLUETOOTH_CONNECT),1);return
-  }
-  val adapter=(getSystemService(BLUETOOTH_SERVICE) as BluetoothManager).adapter
-  if(adapter==null||!adapter.isEnabled){toast("Включи Bluetooth");return}
-  val devices=adapter.bondedDevices.toList()
-  if(devices.isEmpty()){toast("Сначала сопряги принтер в настройках Android");return}
-  AlertDialog.Builder(this).setTitle("Сопряжённые устройства")
-   .setItems(devices.map{(it.name?:"Без имени")+" ("+it.address+")"}.toTypedArray()){_,i->
-    printer=devices[i];status.text="Выбран: "+devices[i].name;log("Выбран принтер: "+devices[i].name+" "+devices[i].address)
-   }.show()
- }
-
- private fun exportToLabelExpert(){
-  if(queue.isEmpty()){toast("Сначала добавь этикетки");return}
+ private fun exportPdf(){
+  if(queue.isEmpty()){Toast.makeText(this,"Очередь пуста",0).show();return}
   try{
    val pdf=PdfDocument()
-   val width=213;val height=340
-   LabelLogic.pages(queue).forEachIndexed{index,labels->
-    val page=pdf.startPage(PdfDocument.PageInfo.Builder(width,height,index+1).create())
+   queue.chunked(3).forEachIndexed{index,labels->
+    val page=pdf.startPage(PdfDocument.PageInfo.Builder(213,340,index+1).create())
     val c=page.canvas;c.drawColor(Color.WHITE)
-    val p=Paint(Paint.ANTI_ALIAS_FLAG).apply{color=Color.BLACK;typeface=Typeface.DEFAULT_BOLD}
-    labels.forEachIndexed{slot,pair->
+    labels.forEachIndexed{slot,l->
      val top=slot*113f
-     p.strokeWidth=1.2f;c.drawLine(7f,top+7f,206f,top+7f,p)
-     p.textSize=14f
-     while(p.measureText(pair.first)>195f&&p.textSize>8f)p.textSize-=0.5f
-     c.drawText(pair.first,10f,top+43f,p)
-     p.typeface=Typeface.DEFAULT;p.textSize=10f
-     while(p.measureText(pair.second)>195f&&p.textSize>7f)p.textSize-=0.5f
-     c.drawText(pair.second,10f,top+70f,p)
+     val p=Paint(Paint.ANTI_ALIAS_FLAG).apply{color=Color.BLACK;typeface=Typeface.DEFAULT_BOLD}
+     c.drawLine(8f,top+7f,205f,top+7f,p)
+     drawFit(c,p,l.title,10f,top+52f,194f,18f)
+     if(l.detail.isNotBlank()){p.typeface=Typeface.DEFAULT;drawFit(c,p,l.detail,10f,top+80f,194f,11f)}
     }
     pdf.finishPage(page)
    }
-   val dir=File(cacheDir,"shared");dir.mkdirs()
-   val file=File(dir,"etiketki.pdf")
-   file.outputStream().use{pdf.writeTo(it)}
-   pdf.close()
+   val dir=File(cacheDir,"shared");dir.mkdirs();val file=File(dir,"etiketki.pdf")
+   file.outputStream().use{pdf.writeTo(it)};pdf.close()
    val uri=Uri.parse("content://"+packageName+".share/etiketki.pdf")
-   val view=Intent(Intent.ACTION_VIEW).apply{
-    setDataAndType(uri,"application/pdf")
-    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-    setPackage("in.kahub.labelexpert")
-    clipData=android.content.ClipData.newUri(contentResolver,"Этикетки",uri)
-   }
-   try{startActivity(view);log("PDF передан в Label Expert")}
-   catch(e:Exception){
-    log("Label Expert не принимает прямое открытие PDF: "+e.javaClass.simpleName)
-    val generic=Intent(Intent.ACTION_VIEW).apply{
-     setDataAndType(uri,"application/pdf")
-     addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-     clipData=android.content.ClipData.newUri(contentResolver,"Этикетки",uri)
-    }
-    startActivity(Intent.createChooser(generic,"Открыть этикетки в…"))
-   }
-  }catch(e:Exception){log("Экспорт: "+e.javaClass.simpleName+": "+e.message);toast("Не удалось открыть PDF: "+e.message)}
+   val intent=Intent(Intent.ACTION_SEND).apply{type="application/pdf";putExtra(Intent.EXTRA_STREAM,uri);addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);clipData=ClipData.newUri(contentResolver,"Наклейки",uri)}
+   startActivity(Intent.createChooser(intent,"Передать PDF в Label Expert или другое приложение"))
+  }catch(e:Exception){AlertDialog.Builder(this).setMessage("Не удалось передать PDF: "+e.message).setPositiveButton("ОК",null).show()}
  }
- private fun showDiagnostics(){
-  val granted=Build.VERSION.SDK_INT<31||checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT)==PackageManager.PERMISSION_GRANTED
-  val adapter=(getSystemService(BLUETOOTH_SERVICE) as BluetoothManager).adapter
-  log("Разрешение Bluetooth: "+granted+"; адаптер включён: "+(adapter?.isEnabled==true))
-  val options=arrayOf("Подключение","TSPL — текст","CPCL — текст","ESC/POS — текст","TSPL — изображение","CPCL — изображение","ESC/POS — изображение","Запрос идентификатора")
-  AlertDialog.Builder(this).setTitle("Диагностика · Bluetooth "+if(granted)"разрешён" else "нет доступа")
-   .setItems(options){_,i->runDiagnostic(i)}
-   .setNegativeButton("Закрыть",null).show()
- }
- private fun runDiagnostic(index:Int){
-  val device=printer?:run{toast("Сначала выбери принтер");return}
-  if(diagnosticBusy){toast("Предыдущий тест ещё выполняется");return}
-  diagnosticBusy=true
-  thread{
-   var socket:BluetoothSocket?=null
-   try{
-    socket=device.createRfcommSocketToServiceRecord(UUID.fromString("00001101-0000-1000-8000-00805F9B34FB"))
-    socket.connect();log("Диагностика "+index+": подключено")
-    val data=when(index){
-     0->byteArrayOf()
-     1->"SIZE 75 mm,40 mm\r\nGAP 2 mm,0 mm\r\nCLS\r\nTEXT 30,40,\"3\",0,2,2,\"TEST TSPL\"\r\nPRINT 1\r\n".toByteArray(Charsets.US_ASCII)
-     2->"! 0 200 200 320 1\r\nTEXT 4 0 30 40 TEST CPCL\r\nFORM\r\nPRINT\r\n".toByteArray(Charsets.US_ASCII)
-     3->byteArrayOf(27,64)+"TEST ESC/POS\n\n".toByteArray(Charsets.US_ASCII)
-     4->page(listOf(Pair("TEST TSPL","IMAGE")))
-     5->diagnosticBitmap(true)
-     6->diagnosticBitmap(false)
-     else->byteArrayOf(29,73,65)
-    }
-    if(data.isNotEmpty()){
-     socket.outputStream.write(data);socket.outputStream.flush()
-     log("Диагностика "+index+": отправлено "+data.size+" байт; результат печати не подтверждён")
-    }
-    if(index==7){
-     Thread.sleep(350)
-     try{
-      val b=ByteArray(128);val n=if(socket.inputStream.available()>0)socket.inputStream.read(b) else 0
-      if(n>0)log("Ответ HEX: "+b.take(n).joinToString(" "){"%02X".format(it)}) else log("Ответ отсутствует")
-     }catch(e:Exception){log("Ответ не получен: "+e.javaClass.simpleName)}
-    }
-   }catch(e:Exception){log("Диагностика "+index+": "+e.javaClass.simpleName+": "+e.message)}
-   finally{try{socket?.close()}catch(_:Exception){};diagnosticBusy=false;log("Диагностика "+index+": завершена")}
-  }
- }
- private fun diagnosticBitmap(cpcl:Boolean):ByteArray{
-  val w=384;val h=96;val bits=ByteArray(w/8*h)
-  for(y in 8 until 80)for(x in 8 until 180)
-   if(x<12||x>175||y<12||y>75)LabelLogic.setBlackPixel(bits,w,x,y)
-  val out=ByteArrayOutputStream()
-  if(cpcl){
-   out.write("! 0 200 200 160 1\r\nEG 48 96 0 0 ".toByteArray(Charsets.US_ASCII))
-   out.write(bits.joinToString(""){"%02X".format(it)}.toByteArray(Charsets.US_ASCII))
-   out.write("\r\nFORM\r\nPRINT\r\n".toByteArray(Charsets.US_ASCII))
-  }else{
-   out.write(byteArrayOf(27,64,29,118,48,0,48,0,96,0))
-   out.write(bits);out.write(byteArrayOf(10,10))
-  }
-  return out.toByteArray()
- }
- private fun print(test:Boolean){
-  val dev=printer?:run{toast("Выбери принтер");return}
-  if(!test&&queue.isEmpty()){toast("Очередь пуста");return}
-  val pages=if(test)listOf(listOf(Pair("ТЕСТ ПЕЧАТИ","AIYIN IP-802BT"),Pair("ЭЛЕКТРОНИКА","Кабели · зарядки"),Pair("ДЕТСКИЕ ВЕЩИ","Одежда · игрушки"))) else LabelLogic.pages(queue)
-  status.text="Подключение…";log("Начало печати: тест="+test+", листов="+pages.size)
-  thread{
-   try{
-    val adapter=(getSystemService(BLUETOOTH_SERVICE) as BluetoothManager).adapter
-    val socket=dev.createRfcommSocketToServiceRecord(UUID.fromString("00001101-0000-1000-8000-00805F9B34FB"))
-    try{
-     log("RFCOMM: подключение к "+dev.address);socket.connect();log("RFCOMM: соединение установлено")
-     pages.forEachIndexed{index,labels->val bytes=page(labels);log("Отправка листа "+(index+1)+": "+bytes.size+" байт");socket.outputStream.write(bytes);socket.outputStream.flush();log("Лист "+(index+1)+": данные отправлены");Thread.sleep(900)}
-     ui.post{status.text="Команды отправлены. Проверь печать."}
-    }finally{socket.close();log("Соединение закрыто")}
-   }catch(e:Exception){log("ОШИБКА: "+e.javaClass.simpleName+": "+e.message);ui.post{status.text="Ошибка: "+e.javaClass.simpleName+": "+e.message}}
-  }
- }
- private fun page(labels:List<Pair<String,String>>):ByteArray{
-  val w=LabelLogic.WIDTH_DOTS;val h=LabelLogic.HEIGHT_DOTS;val bitmap=Bitmap.createBitmap(w,h,Bitmap.Config.ARGB_8888)
-  val canvas=Canvas(bitmap);canvas.drawColor(Color.WHITE)
-  val p=Paint(Paint.ANTI_ALIAS_FLAG).apply{color=Color.BLACK;typeface=Typeface.DEFAULT_BOLD;textSize=34f}
-  labels.forEachIndexed{index,pair->
-   val y=index*LabelLogic.LABEL_HEIGHT_DOTS
-   canvas.drawRect(20f,(y+16).toFloat(),580f,(y+21).toFloat(),p)
-   drawText(canvas,p,pair.first,28f,(y+115).toFloat())
-   drawText(canvas,p,pair.second,28f,(y+195).toFloat())
-   if(index<2){p.color=Color.GRAY;var x=20f;while(x<580f){canvas.drawLine(x,(y+319).toFloat(),x+12f,(y+319).toFloat(),p);x+=22f};p.color=Color.BLACK}
-  }
-  val rowBytes=LabelLogic.rowBytes(w);val bits=ByteArray(rowBytes*h)
-  for(y in 0 until h)for(x in 0 until w){
-   val c=bitmap.getPixel(x,y)
-   if((Color.red(c)*299+Color.green(c)*587+Color.blue(c)*114)/1000<150){
-    LabelLogic.setBlackPixel(bits,w,x,y)
-   }
-  }
-  bitmap.recycle()
-  return ByteArrayOutputStream().apply{
-   write("SIZE 75 mm,120 mm\r\nGAP 2 mm,0 mm\r\nDIRECTION 1\r\nCLS\r\n".toByteArray(Charsets.US_ASCII))
-   write(("BITMAP 0,0,"+rowBytes+","+h+",0,").toByteArray(Charsets.US_ASCII))
-   write(bits);write("\r\nPRINT 1,1\r\n".toByteArray(Charsets.US_ASCII))
-  }.toByteArray()
- }
- private fun drawText(c:Canvas,p:Paint,s:String,x:Float,y:Float){
-  p.textSize=34f;while(p.measureText(s)>540f&&p.textSize>16f)p.textSize-=1f
-  c.drawText(s,x,y,p)
+ private fun drawFit(c:Canvas,p:Paint,s:String,x:Float,y:Float,width:Float,size:Float){
+  p.textSize=size;while(p.measureText(s)>width&&p.textSize>8f)p.textSize-=0.5f
+  if(p.measureText(s)<=width){c.drawText(s,x,y,p);return}
+  val words=s.split(" ");var line="";var offset=0f
+  for(w in words){val next=if(line.isEmpty())w else "$"+"line $"+ "w";if(p.measureText(next)>width&&line.isNotEmpty()){c.drawText(line,x,y+offset,p);offset+=12f;line=w}else line=next}
+  if(line.isNotEmpty())c.drawText(line,x,y+offset,p)
  }
 }
